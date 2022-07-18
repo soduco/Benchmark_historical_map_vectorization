@@ -1,0 +1,51 @@
+algorithm_kwargs:
+  batch_size: 1
+  eval_freq: 8
+  num_epochs: 64
+  start_epoch: 45
+amp: false
+dataset_kwargs:
+  batch_size: 1
+  crop_size: 512
+  dataset: ade20k
+  image_size: 512
+  normalization: vit
+  num_workers: 10
+  split: train
+inference_kwargs:
+  im_size: 512
+  window_size: 512
+  window_stride: 512
+net_kwargs:
+  backbone: vit_base_patch8_224
+  d_model: 768
+  decoder:
+    n_cls: 1
+    name: linear
+  distilled: false
+  drop_path_rate: 0.1
+  dropout: 0.0
+  image_size: !!python/tuple
+  - 512
+  - 512
+  n_cls: 1
+  n_heads: 12
+  n_layers: 12
+  normalization: vit
+  patch_size: 8
+optimizer_kwargs:
+  clip_grad: null
+  epochs: 64
+  iter_max: 161728
+  iter_warmup: 0.0
+  lr: 0.001
+  min_lr: 1.0e-05
+  momentum: 0.9
+  opt: sgd
+  poly_power: 0.9
+  poly_step_size: 1
+  sched: polynomial
+  weight_decay: 0.0
+resume: true
+version: normal
+world_batch_size: 8

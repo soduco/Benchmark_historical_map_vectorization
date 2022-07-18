@@ -1,0 +1,5 @@
+training_info/*
+pretrain_weight/*
+*/__pycache__
+demo/*
+dataset/image_gt/*

@@ -1,0 +1,9 @@
+setup.py
+./cpp/pathloss_distance.cpp
+./cpp/pathloss_distance_2d.cpp
+./cpp/util.cpp
+./cpp/wrap_py3.cpp
+pathloss.egg-info/PKG-INFO
+pathloss.egg-info/SOURCES.txt
+pathloss.egg-info/dependency_links.txt
+pathloss.egg-info/top_level.txt
