@@ -25,20 +25,15 @@ The objects are extracted manually from the maps should satisfy the flowing crit
 
 - Different objects can be seperated by different textures in the images
 
-<img src="./fig/image_texture.jpg" alt="drawing" width="150"/>
-<img src="./fig/gt_label_texture.jpg" alt="drawing" width="150"/>
+<img src="./fig/image_texture.jpg" alt="drawing" width="150"/><img src="./fig/gt_label_texture.jpg" alt="drawing" width="150"/>
 
 - Exceptions (Atlas Municipal): according to the applications, side walks are considered as closed objects, even the boundaries of objects are partially opened.
 
-<img src="./fig/image.jpg" alt="drawing" width="150"/>
-<img src="./fig/gt_label.jpg" alt="drawing" width="150"/>
-<img src="./fig/image_zoom.jpg" alt="drawing" width="150"/>
-<img src="./fig/gt_label_zoom.jpg" alt="drawing" width="150"/>
+<img src="./fig/image.jpg" alt="drawing" width="150"/><img src="./fig/gt_label.jpg" alt="drawing" width="150"/><img src="./fig/image_zoom.jpg" alt="drawing" width="150"/><img src="./fig/gt_label_zoom.jpg" alt="drawing" width="150"/>
 
 - Paper artifact: Image segmentation tools should be able to tolerance different levels of noise in the image such as pixel missing in the boundaries and paper artifcat which create gaps in the boundaries.
 
-<img src="./fig/image_artifact.jpg" alt="drawing" width="150"/>
-<img src="./fig/gt_label_artifact.jpg" alt="drawing" width="150"/>
+<img src="./fig/image_artifact.jpg" alt="drawing" width="150"/><img src="./fig/gt_label_artifact.jpg" alt="drawing" width="150"/>
 
 ## Dataset stat
 
