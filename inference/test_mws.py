@@ -9,6 +9,9 @@ import pandas as pd
 from pathlib import Path
 import yaml
 import cv2
+from tqdm import tqdm
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = 1000000000 
 
 # Import shapely -> geo tool
 from shapely.ops import polygonize_full
@@ -35,31 +38,40 @@ from utils.reconstruct_tiling_dict import reconstruct_from_patches
 from evaluation.eval_shape_detection import shape_detection
 from evaluation.all_eval.run_eval import evaluation
 
+import pdb
+
 
 def sigmoid(x):
     return 1./(1+np.exp(np.array(-1.*x)))
 
 def test(model, win_size, args):
-    train_img  = Data(args.original_image_path, args.gt_image_path, win_size, args.unseen)
-    testloader = torch.utils.data.DataLoader(train_img, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
+    if args.dataset == 'atlas_municipal':
+        input = args.original_image_path
+        gt = args.gt_image_path
+    elif args.dataset == 'verniquet':
+        input = args.original_image_path_verniquet
+        gt = args.gt_image_path_verniquet
+
+    train_img  = Data(input, gt, win_size, args.unseen)
+    testloader = torch.utils.data.DataLoader(train_img, batch_size=40, shuffle=False, num_workers=0, pin_memory=True)
 
     if args.cuda:
-        model.cuda()
+        model.to(args.device)
 
     model.eval()
-    for i, (images, _) in enumerate(testloader):
+    for i, (images, _) in enumerate(tqdm(testloader)):
         if args.cuda:
-            images = images.cuda()
+            images = images.to(args.device)
 
         with torch.no_grad():
             if args.model_type == 'mosin':
                 init_labels = torch.zeros_like(images.shape[:2])
-                init_labels = init_labels.cuda()
+                init_labels = init_labels.to(args.device)
                 out = model(images, init_labels)
-                fuse = out[0][0][-1].cpu().numpy()[0,0,...]
+                fuse = out[0][0][-1].cpu().numpy()
             elif args.model_type == 'hed' or args.model_type == 'bdcn' or args.model_type == 'hed_pretrain' or args.model_type == 'bdcn_pretrain':
                 out = model(images)
-                fuse = torch.sigmoid(out[-1]).cpu().numpy()[0,0,...]
+                fuse = torch.sigmoid(out[-1]).cpu().numpy()
             elif args.model_type == 'dws':
                 out = model(images)
                 out = torch.softmax(out, 1).squeeze()
@@ -67,12 +79,12 @@ def test(model, win_size, args):
                 fuse = (out == 0).type(torch.uint8).cpu().numpy()
             else:
                 out = model(images)
-                fuse = torch.sigmoid(out).cpu().numpy()[0,0,...]
+                fuse = torch.sigmoid(out).cpu().numpy()
 
         if i == 0:
-            patches_images_ws = fuse[np.newaxis,...]
+            patches_images_ws = fuse[:, 0,...]
         else:
-            patches_images_ws = np.concatenate((patches_images_ws, fuse[np.newaxis,...]), axis=0)
+            patches_images_ws = np.concatenate((patches_images_ws, fuse[:, 0,...]), axis=0)
     return patches_images_ws
 
 
@@ -86,10 +98,9 @@ def main():
     torch.manual_seed(args.seed)
 
     # Choose the GPUs
-    os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    args.device = torch.device("cuda:0".format(str(args.gpu)) if torch.cuda.is_available() else "cpu")
 
-    if args.model_type == 'unet' or args.model_type == 'bal' or args.model_type == 'topo' or args.model_type == 'pathloss':
+    if args.model_type == 'unet' or args.model_type == 'bal' or args.model_type == 'topo' or args.model_type == 'pathloss' or args.model_type == 'unet_bri' or args.model_type == 'unet_aff' or args.model_type == 'unet_hom' or args.model_type == 'unet_tps' or args.model_type == 'unet_bri_aff' or args.model_type == 'unet_bri_hom' or args.model_type == 'unet_bri_tps':
         model = UNET(n_channels=args.channels, n_classes=args.classes)
         model.load_state_dict(torch.load('%s' % (args.model)))
         print('Load model {}'.format(args.model))
@@ -145,22 +156,22 @@ def main():
         win_size = 500
         patches_images_ws = test(model, win_size, args)
 
-    res_dir = str(Path(args.model).parent.parent)
-    output_dir = os.path.join(res_dir, '{}_test_evaluation'.format(str(args.model_type)))
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # Reconstruct image
-    tile_save_image_path = os.path.join(output_dir, '{}_test.png'.format(str(args.model_type)))
-    in_img = cv2.imread(args.original_image_path)
-
-    pad_px = win_size // 2
-    new_img = reconstruct_from_patches(patches_images_ws, win_size, pad_px, in_img.shape, np.float32)
-
-    new_img_ws = (new_img*255).astype(np.uint8)
-    cv2.imwrite(tile_save_image_path, new_img_ws)
-
     if args.dataset == 'atlas_municipal':
+        res_dir = str(Path(args.model).parent.parent)
+        output_dir = os.path.join(res_dir, '{}_test_evaluation'.format(str(args.model_type)))
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Reconstruct image
+        tile_save_image_path = os.path.join(output_dir, '{}_test.png'.format(str(args.model_type)))
+
+        in_img = cv2.imread(args.original_image_path)
+
+        pad_px = win_size // 2
+        new_img = reconstruct_from_patches(patches_images_ws, win_size, pad_px, in_img.shape, np.float32)
+
+        new_img_ws = (new_img*255).astype(np.uint8)
+        cv2.imwrite(tile_save_image_path, new_img_ws)
         # Boarder Calibration
         BOD = cv2.imread(args.EPM_border, 0)
         new_img_ws[BOD == 255] = 255
@@ -188,7 +199,7 @@ def main():
         'Complete' : complete,
         'Quality'  : quality,
         'ClDice'   : cldice,
-        'B_p'      : betti_p, 
+        'B_p'      : betti_p,
         'B_r'      : betti_r,
         'B_f1'     : betti_f1,
         'pq_test'  : pq,
@@ -197,6 +208,60 @@ def main():
         })
 
         save_json = os.path.join(res_dir, 'test.json')
+        test_df.to_json(save_json)
+    elif args.dataset == 'verniquet':
+        res_dir = os.path.join(str(Path(args.model).parent.parent), 'verniquet_eval_results')
+        output_dir = os.path.join(res_dir, '{}_{}_test_evaluation'.format(str(args.series), str(args.model_type)))
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Reconstruct image
+        tile_save_image_path = os.path.join(output_dir, '{}_test.png'.format(str(args.model_type)))
+        in_img = cv2.imread(args.original_image_path_verniquet)
+
+        pad_px = win_size // 2
+        new_img = reconstruct_from_patches(patches_images_ws, win_size, pad_px, in_img.shape, np.float32)
+
+        new_img_ws = (new_img*255).astype(np.uint8)
+        cv2.imwrite(tile_save_image_path, new_img_ws)
+
+        # Boarder Calibration
+        BOD = cv2.imread(args.EPM_border_verniquet, 0)
+        new_img_ws[BOD == 255] = 255
+        new_img_ws = new_img_ws.astype(np.uint8)
+        cv2.imwrite(tile_save_image_path, new_img_ws)
+        print('Save reconstruction calibration image into {}'.format(tile_save_image_path))
+
+        area, dynamic = int(args.model.split('/')[-1].split('_')[0]), int(args.model.split('/')[-1].split('_')[1])
+        print('area: {}, dynamic: {}'.format(area, dynamic))
+
+        output_path = os.path.join(output_dir, 'label_map.tif')
+        meyer_watershed(tile_save_image_path, dynamic, area, output_path, './out.png')
+
+        gt = cv2.imread(args.gt_image_path_verniquet, 0)
+        gt = (gt / 255).astype(np.uint8)
+
+        pred_ws = cv2.imread(output_path, cv2.IMREAD_UNCHANGED)
+        correct, complete, quality, cldice, betti_p, betti_r, betti_f1 = evaluation(new_img, gt, pred_ws)
+
+        iou_threshold = 0.5
+        input_contenders_path = [output_path]
+        precisions, recalls, f_score, iou_info, coco_matrix = shape_detection(args.gt_label_path_verniquet, input_contenders_path, output_dir, iou_threshold, args.validation_mask_verniquet)
+        pq, sq, rq = coco_matrix['label_map']['PQ'], coco_matrix['label_map']['SQ'], coco_matrix['label_map']['RQ']
+        test_df = pd.DataFrame({args.model_type :{
+        'Correct'  : correct,
+        'Complete' : complete,
+        'Quality'  : quality,
+        'ClDice'   : cldice,
+        'B_p'      : betti_p, 
+        'B_r'      : betti_r,
+        'B_f1'     : betti_f1,
+        'pq_test'  : pq,
+        'sq_test'  : sq,
+        'rq_test'  : rq}
+        })
+
+        save_json = os.path.join(output_dir, 'test.json')
         test_df.to_json(save_json)
 
     if args.vectorization:
@@ -268,7 +333,7 @@ def sal_2_polygon(img, vector_path, res_dir, dp_tol=2):
 
 def parse_args():
     parser = argparse.ArgumentParser('Test UNET')
-    parser.add_argument('--dataset', type=str, default='unet',
+    parser.add_argument('--dataset', type=str, default='verniquet',
                         help='The type dataset')
     parser.add_argument('--seed', type=int, default=50,
                         help='Seed control.')
@@ -302,11 +367,23 @@ def parse_args():
                         default='../dataset/img_gt/BHdV_PL_ATL20Ardt_1898_0004-TEST-EDGE_target.png', help='GT edges')
     parser.add_argument('--gt_label_path', type=str, 
                         default='../dataset/img_gt/BHdV_PL_ATL20Ardt_1898_0004-TEST-GT_LABELS_target.png', help='Gt labels')
-
     parser.add_argument('--validation_mask', type=str, 
                         default=r'../dataset/img_gt/BHdV_PL_ATL20Ardt_1898_0004-TEST-MASK_content.png', help='Validation mask to evaluate the results')
     parser.add_argument('--EPM_border', type=str, 
                         default=r'../dataset/img_gt/BHdV_PL_ATL20Ardt_1898_0004-TEST-EPM-BORDER-MASK_content.png', help='The mask of the EPM_border')
+
+    parser.add_argument('--series', type=int, default=37,
+                    help='Series value of verniquet datset')
+    parser.add_argument('--original_image_path_verniquet', type=str,
+                        default='../dataset/image_gt_verniquet/101100{}.png'.format(parser.parse_args().series), help='Original image')
+    parser.add_argument('--gt_image_path_verniquet', type=str,
+                        default='../dataset/image_gt_verniquet/Verniquet_planche_{}_GT_EDGE_target.tif'.format(parser.parse_args().series), help='GT edges')
+    parser.add_argument('--gt_label_path_verniquet', type=str, 
+                        default='../dataset/image_gt_verniquet/Verniquet_planche_{}_GT_LABELS_target.png'.format(parser.parse_args().series), help='Gt labels')
+    parser.add_argument('--validation_mask_verniquet', type=str, 
+                        default=r'../dataset/image_gt_verniquet/Verniquet_planche_{}_MASK_content.tif'.format(parser.parse_args().series), help='Validation mask to evaluate the results')
+    parser.add_argument('--EPM_border_verniquet', type=str, 
+                        default=r'../dataset/image_gt_verniquet/Verniquet_planche_{}_GT_EPM-BORDER-MASK_content.tif'.format(parser.parse_args().series), help='The mask of the EPM_border')
 
     parser.add_argument('--vgg', type=str, default='vgg19',
 						help='pretrained vgg net (choices: vgg11, vgg11_bn, vgg13, vgg13_bn, vgg16, vgg16_bn, vgg19, vgg19_bn)')

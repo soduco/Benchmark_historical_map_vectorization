@@ -23,6 +23,10 @@ The objects are extracted manually from the maps should satisfy the flowing crit
 
 - The boundaries of the objects should be closed (the boundaries could be lines or dash lines)
 
+Exceptions: Dash lines could form a closed objects (Verniquet 1790 maps)
+
+<img src="./fig/verniquet_37_img.jpg" alt="drawing" width="150"/> <img src="./fig/verniquet_37_gt.jpg" alt="drawing" width="150"/>
+
 - Different objects can be seperated by different textures in the images
 
 <img src="./fig/image_texture.jpg" alt="drawing" width="150"/><img src="./fig/gt_label_texture.jpg" alt="drawing" width="150"/>
@@ -45,6 +49,9 @@ The objects are extracted manually from the maps should satisfy the flowing crit
 | Validation    | 1926 | 3000, 9000 | 2182 |
 | Testing       | 1898 | 6000, 5500 | 2835 | 
 
-**Verniquet**
+**Verniquet (Testing for generalization of data augmentation)**
 
-Relased soon...
+| Dataset  | year   | Image_size |  shape  |
+|----------|--------|:-----:|-------|
+| Testing 37       | 1790 | 12494, 17778 | 1181 |
+| Testing 38       | 1790 | 12468, 17618 | 812  |

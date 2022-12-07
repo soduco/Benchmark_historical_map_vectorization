@@ -1,4 +1,7 @@
 # Run Benchmark
+import sys
+sys.path.insert(1, '../')
+
 import numpy as np
 import os
 import cv2
@@ -59,7 +62,7 @@ def pre_save_label_maps(image_path, output_path, list_dynamic, list_area, model,
         meyer_watershed(image_path, dynamic, area, output_path, './out.png')
 
     test_list = list(itertools.product(list_dynamic, list_area))
-    pool = pp.ProcessPool(nodes=15) # Pool
+    pool = pp.ProcessPool(nodes=10) # Pool
     get_partial = partial(save_label_maps_batch, image_path, output_path)
     results = pool.amap(get_partial, test_list)  # do an asynchronous map, then get the results
     result = results.get()
@@ -79,7 +82,7 @@ def grid_search_eval(gt_path, input_contenders_dir, output_dir, iou_threshold, i
 
     input_contenders_dir = os.path.join(input_contenders_dir, model, mode, name)
     file_names = os.listdir(input_contenders_dir)
-    pool = pp.ProcessPool(node=15) # Pool
+    pool = pp.ProcessPool(nodes=10) # Pool
     get_partial = partial(coco_eval_batch)
     results = pool.amap(get_partial, file_names) # do an asynchronous map, then get the results
     coco_list = results.get()
@@ -92,6 +95,8 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Benchmark evaluaion')
         parser.add_argument('--dataset', type=str, default='hist',
             help='Types of dataset')
+        parser.add_argument('--image_dir', type=str, default=r'/lrde/home2/ychen/release_code/release_code/training_info_ambiguous/HistoricalMap2020/unet/2022-11-27_17:36:05_lr_0.0001_train_unet_bs_1_no_aug_baseline/reconstruction_png',
+            help='The input path of the image')
 
         parser.add_argument('--last_epoch', type=int, default=50,
             help='Last epochs ')
@@ -107,8 +112,7 @@ if __name__ == '__main__':
         parser.add_argument('--auc-threshold', type=float,
             help='Threshold value (float) for AUC: 0.5 <= t < 1.'f' Default={AUC_THRESHOLD_DEFAULT}', default=AUC_THRESHOLD_DEFAULT)
 
-        parser.add_argument('--image_dir', type=str, default=r'/lrde/work/ychen/PRL/benchmark_DL/unet_original/HistoricalMap2020/UNET/2022-03-03_20:15:02_lr_0.0001_train_unet_orign_bs_1/reconstruction',
-            help='The input path of the image')
+
         parser.add_argument('--validation_mask', type=str, default=r'/lrde/image/CV_2021_yizi/historical_map_2020/img_gt/BHdV_PL_ATL20Ardt_1926_0004-VAL-MASK_content.png',
             help='Validation mask to evaluate the results')
         parser.add_argument('--gt_label_path', type=str, default='/lrde/work/ychen/code_for_ICDAR/ICDAR_paper/icdar21-paper-map-object-seg/data_generator/img_gt/BHdV_PL_ATL20Ardt_1926_0004-VAL-GT_LABELS_target.png',
