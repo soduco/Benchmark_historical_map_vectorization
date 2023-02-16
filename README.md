@@ -17,7 +17,8 @@ Results are made reproducible and reusable thanks to public data, code and resul
 
 ## Usage 
 
-- **Download**
+- **Download** 
+
 Download the dataset and put it into the folder [Dataset](./dataset/)
 
 - **Data loading** 
@@ -106,9 +107,43 @@ cd inferencing/
 python test_mws.py --cuda --gpu <gpu> --model_type <model type> -d <dyanmic value> -a <area value> --model <best model weight .pth file> 
 ```
 
-- **Infrencing unseen historical maps with watershed segmentation** 
+- **Infrencing unseen historical maps with watershed segmentation**
+
+Model_name and its related model_type (download weight file (in release) into the folder ./pretrain_weight/ ):
+
+| Model_name                     | model_type    |
+|:------------------------------ |:------------- |
+| hed_best_weight.pth            | hed           |
+| hed_pretrain_best_weight.pth   | hed_pretrain  |
+| bdcn_best_weight.pth           | bdcn          |
+| bdcn_pretrain_best_weight.pth  | bdcn_pretrain |
+| mini_unet_best_weight.pth      | mini-unet     |
+| mosin_best_weight.pth          | mosin         |
+| topo_best_weight.pth           | topo          |
+| bal_best_weight.pth            | bal           |
+| pathloss_best_weight.pth       | pathloss      |
+| vit_best_weight.pth            | vit           |
+| pvt_best_weight.pth            | pvt           |
+| unet_best_weight.pth           | unet          |
+| unet_hws_best_weight.pth       | unet          |
+| unet_aff_best_weight.pth       | unet_aff      |
+| unet_bri_aff_best_weight.pth   | unet_bri_aff  |
+| unet_bri_best_weight.pth       | unet_bri      |
+| unet_bri_hom_best_weight.pth   | unet_bri_hom  |
+| unet_tps_best_weight.pth       | unet_tps      |
+| unet_bri_tps_best_weight.pth   | unet_bri_tps  |
+| unet_hom_best_weight.pth       | unet_hom      |
+| deep_watershed_best_weight.pth | dws           |
+
+Map inferencing:
 
 ```bat
 cd inferencing/
-python test_mws.py --cuda --unseen --gpu <gpu> --model_type <model type> -d <dyanmic value> -a <area value> --model <best model weight .pth file> --original_image <original_image_path>
+python new_map_inference.py --unseen --cuda --gpu <gpu> --model_type <model type> --model <best model weight .pth file>  --input_map_path <image path .jpg/.png file>
+```
+
+For example:
+```bat
+cd inferencing/
+python new_map_inference.py --unseen --cuda --gpu 1 --model_type unet --model ./pretrain_weight/unet_best_weight.pth  --input_map_path ./BHdV_PL_ATL20Ardt_1898_0004-TEST-INPUT_color_border.jpg
 ```

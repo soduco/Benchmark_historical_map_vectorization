@@ -33,7 +33,6 @@ class Data(data.Dataset):
 
     def __getitem__(self, index):
         img    = self.image_path[index]
-        labels = self.gt_path[index]
 
         img = img / 255.
         img = np.array(img, dtype=np.float32)
@@ -42,8 +41,9 @@ class Data(data.Dataset):
         img = torch.from_numpy(img).float()
 
         if self.unseen:
-            return img, None
+            return img
 
+        labels = self.gt_path[index]
         labels = labels/255.
         labels = labels.astype(np.uint8)
 
