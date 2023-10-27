@@ -11,13 +11,16 @@ import yaml
 import cv2
 from tqdm import tqdm
 from PIL import Image
-Image.MAX_IMAGE_PIXELS = 1000000000 
+Image.MAX_IMAGE_PIXELS = 1000000000
 
 # Import shapely -> geo tool
 from shapely.ops import polygonize_full
 from shapely.geometry import mapping
 from skimage.measure import approximate_polygon
 import fiona
+from skimage import measure
+from shapely.geometry import Polygon
+import geopandas as gpd
 
 # Import dataloader
 from data.smart_data_loader import Data
@@ -34,6 +37,7 @@ from model.mosin import mosin, VGGNet
 # Import Utils
 from utils.reconstruct_tiling_dict import reconstruct_from_patches
 
+import pdb
 
 def sigmoid(x):
     return 1./(1+np.exp(np.array(-1.*x)))
@@ -147,7 +151,8 @@ def main():
         win_size = 500
         patches_images_ws = test(model, win_size, args)
 
-    output_dir = os.path.join(str(Path(args.model).parent), 'epm_eval_results')
+    name = str(args.input_map_path).split('/')[-1].split('.')[0]
+    output_dir = os.path.join(str(Path(args.model).parent), name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -166,69 +171,91 @@ def main():
     meyer_watershed(tile_save_image_path, args.dynamic, args.area, output_path, './out.png')
 
     if args.vectorization:
-        save_output = os.path.join(output_dir, 'ws_output')
-        if not os.path.exists(save_output): os.makedirs(save_output)
-
         save_vector = os.path.join(output_dir, 'vector_output')
         if not os.path.exists(save_vector): os.makedirs(save_vector)
 
-        output_path = os.path.join(save_output, '{}.tiff'.format('label'))
-        vector_path = os.path.join(save_vector, '{}.npy'.format('vector_lines'))
-        out_visu_path = os.path.join(output_dir, 'out.png')
-        print('/lrde/home2/ychen/hierarchy_watershed/temporar_python_bindings/vectorization_ws_meyer/build/histmapseg {} {} {} {} {} {}'.format(tile_save_image_path, int(args.dynamic), int(args.area), output_path, out_visu_path, vector_path))
-        os.system('/lrde/home2/ychen/hierarchy_watershed/temporar_python_bindings/vectorization_ws_meyer/build/histmapseg {} {} {} {} {} {}'.format(tile_save_image_path, int(args.dynamic), int(args.area), output_path, out_visu_path, vector_path))
-        sal_2_polygon(args.original_image_path, vector_path, output_dir)
+        # TODO:
+        # save_output = os.path.join(output_dir, 'ws_output')
+        # if not os.path.exists(save_output): os.makedirs(save_output)
+
+        # output_path = os.path.join(save_output, '{}.tiff'.format('label'))
+        # vector_path = os.path.join(save_vector, '{}.npy'.format('vector_lines'))
+        # out_visu_path = os.path.join(output_dir, 'out.png')
+        # print('/lrde/home2/ychen/hierarchy_watershed/temporar_python_bindings/vectorization_ws_meyer/build/histmapseg {} {} {} {} {} {}'.format(tile_save_image_path, int(args.dynamic), int(args.area), output_path, out_visu_path, vector_path))
+        # os.system('/lrde/home2/ychen/hierarchy_watershed/temporar_python_bindings/vectorization_ws_meyer/build/histmapseg {} {} {} {} {} {}'.format(tile_save_image_path, int(args.dynamic), int(args.area), output_path, out_visu_path, vector_path))
+
+        watershed_label_path = output_path
+        sal_2_polygon(watershed_label_path, save_vector)
 
     print('Done')
 
 def di(lines, i):
     return lines[lines[..., 2] == i, :2]
 
-def sal_2_polygon(img, vector_path, res_dir, dp_tol=2):
-    lines = np.load(vector_path)
-    schema = {
-        'geometry': 'Polygon',
-        'properties': {'id': 'int'},
-    }
+def sal_2_polygon(img_path, save_vector):
+    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+    binary = img
+    binary_image = ((binary == 0)).astype(np.uint8)
+    contours = measure.find_contours(binary_image, 0.5)
+    shapely_polygons = [Polygon(contour) for contour in contours]
 
-    save_vector_path = os.path.join(res_dir, 'shape_file')
-    if not os.path.exists(save_vector_path): 
-        os.makedirs(save_vector_path)
+    save_shapely_polygons = []
+    for original_polygon in shapely_polygons:
+        coordinates = list(original_polygon.exterior.coords)
+        modified_coordinates = [(y, -x) for x, y in coordinates]
+        modified_polygon = Polygon(modified_coordinates)
+        save_shapely_polygons.append(modified_polygon)
 
-    lineShp = fiona.open(os.path.join(save_vector_path, 'Polygon.shp'), mode='w', driver='ESRI Shapefile', schema = schema, crs = "EPSG:4326")
-    x, y = img.shape
-    all_lines = []
+    data = {'geometry': save_shapely_polygons}
+    gdf = gpd.GeoDataFrame(data, crs='EPSG:4326')  # 'EPSG:4326' is the coordinate reference system (CRS)
+    output_shapefile = os.path.join(save_vector, 'output.shp')
+    gdf.to_file(output_shapefile)
 
-    # Add border lines
-    left_top     = (0,  0)
-    left_bottom  = (0,  -x)
-    right_top    = (y, 0)
-    right_bottom = (y, -x)
+# def sal_2_polygon(img, vector_path, res_dir, dp_tol=2):
+#     lines = np.load(vector_path)
+#     schema = {
+#         'geometry': 'Polygon',
+#         'properties': {'id': 'int'},
+#     }
 
-    for i in np.unique(lines[..., 2]):
-        d_plot = di(lines, i)
-        d_plot = approximate_polygon(d_plot, tolerance=dp_tol)
-        all_lines += [((int(d_plot[d][0]/2), -int(d_plot[d][1]/2)), (int(d_plot[d+1][0]/2), -int(d_plot[d+1][1]/2))) for d in range(0, len(d_plot)-1)]
+#     save_vector_path = os.path.join(res_dir, 'shape_file')
+#     if not os.path.exists(save_vector_path): 
+#         os.makedirs(save_vector_path)
+
+#     lineShp = fiona.open(os.path.join(save_vector_path, 'Polygon.shp'), mode='w', driver='ESRI Shapefile', schema = schema, crs = "EPSG:4326")
+#     x, y = img.shape
+#     all_lines = []
+
+#     # Add border lines
+#     left_top     = (0,  0)
+#     left_bottom  = (0,  -x)
+#     right_top    = (y, 0)
+#     right_bottom = (y, -x)
+
+#     for i in np.unique(lines[..., 2]):
+#         d_plot = di(lines, i)
+#         d_plot = approximate_polygon(d_plot, tolerance=dp_tol)
+#         all_lines += [((int(d_plot[d][0]/2), -int(d_plot[d][1]/2)), (int(d_plot[d+1][0]/2), -int(d_plot[d+1][1]/2))) for d in range(0, len(d_plot)-1)]
     
-    # Add border lines
-    all_lines.append((left_top, left_bottom))
-    all_lines.append((left_bottom, right_bottom))
-    all_lines.append((right_bottom, right_top))
-    all_lines.append((right_top, left_top))
-    result, dangles, cuts, invalids = polygonize_full(all_lines)
+#     # Add border lines
+#     all_lines.append((left_top, left_bottom))
+#     all_lines.append((left_bottom, right_bottom))
+#     all_lines.append((right_bottom, right_top))
+#     all_lines.append((right_top, left_top))
+#     result, dangles, cuts, invalids = polygonize_full(all_lines)
 
-    print('Number of valid geometry: {}'.format(len(result.geoms)))
-    print('Number of dangles geometry: {}'.format(len(dangles.geoms)))
-    print('Number of cuts geometry: {}'.format(len(cuts.geoms)))
-    print('Number of invalids geometry: {}'.format(len(invalids.geoms)))
+#     print('Number of valid geometry: {}'.format(len(result.geoms)))
+#     print('Number of dangles geometry: {}'.format(len(dangles.geoms)))
+#     print('Number of cuts geometry: {}'.format(len(cuts.geoms)))
+#     print('Number of invalids geometry: {}'.format(len(invalids.geoms)))
     
-    for index in range(0, len(result.geoms)):
-        lineShp.write({
-            'geometry': mapping(result.geoms[index]),
-            'properties': {'id': index},
-        })
+#     for index in range(0, len(result.geoms)):
+#         lineShp.write({
+#             'geometry': mapping(result.geoms[index]),
+#             'properties': {'id': index},
+#         })
 
-    lineShp.close()
+#     lineShp.close()
 
 def parse_args():
     parser = argparse.ArgumentParser('Test UNET')

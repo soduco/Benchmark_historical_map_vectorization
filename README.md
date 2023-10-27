@@ -145,5 +145,5 @@ python new_map_inference.py --unseen --cuda --gpu <gpu> --model_type <model type
 For example:
 ```bat
 cd inferencing/
-python new_map_inference.py --unseen --cuda --gpu 1 --model_type unet --model ./pretrain_weight/unet_best_weight.pth  --input_map_path ./BHdV_PL_ATL20Ardt_1898_0004-TEST-INPUT_color_border.jpg
+python new_map_inference.py --unseen --cuda --gpu 1 --model_type unet --model ./pretrain_weight/unet_best_weight.pth  --input_map_path ./BHdV_PL_ATL20Ardt_1898_0004-TEST-INPUT_color_border.jpg --vectorization
 ```
