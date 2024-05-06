@@ -43,7 +43,7 @@ Exceptions: Dash lines could form a closed objects (Verniquet 1790 maps)
 
 **Atlas Municipal**
 
-| Dataset  | year   | Image_size |  shape  |
+| Dataset  | year   | Image_size |  closed shapes  |
 |----------|--------|:-----:|-------|
 | Training      | 1926 | 4500, 9000 | 3342 |
 | Validation    | 1926 | 3000, 9000 | 2182 |
@@ -51,7 +51,7 @@ Exceptions: Dash lines could form a closed objects (Verniquet 1790 maps)
 
 **Verniquet (Testing for generalization of data augmentation)**
 
-| Dataset  | year   | Image_size |  shape  |
+| Dataset  | year   | Image_size |  closed shapes  |
 |----------|--------|:-----:|-------|
 | Testing 37       | 1790 | 12494, 17778 | 1181 |
 | Testing 38       | 1790 | 12468, 17618 | 812  |
