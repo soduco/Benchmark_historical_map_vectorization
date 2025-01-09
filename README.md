@@ -19,7 +19,7 @@ Results are made reproducible and reusable thanks to public data, code and resul
 
 - **Download** 
 
-Download the dataset and put it into the folder [Dataset](./dataset/)
+[Download the dataset](https://datadryad.org/stash/share/V0gKnI9pWRMdzJnusQfn8HYuxCK3pbqCDGAFEf5jsf0) (`image_gt.zip`) and put it into the folder [Dataset](./dataset/)
 
 - **Data loading** 
 
